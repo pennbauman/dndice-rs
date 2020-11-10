@@ -7,8 +7,6 @@ use std::process;
 
 mod dice;
 
-static VERSION: &str = env!("CARGO_PKG_VERSION");
-
 // Generate a print one set of statistics
 fn stats(stats_type: &str) -> [i32; 6] {
     // Standard Array
@@ -80,7 +78,7 @@ fn main() {
             println!("help");
             process::exit(0);
         } else if args[i] == "--version" {
-            println!("DnDice version {}", VERSION);
+            println!("DnDice version {}", env!("CARGO_PKG_VERSION"));
             process::exit(0);
         } else {
             if args[i].chars().nth(0).unwrap() == '-' {
@@ -112,8 +110,7 @@ fn main() {
                 dice_text += &d;
             }
             let dice_roll = dice::parse(&dice_text);
-            dice::print_dice(&dice_roll);
-            println!();
+            println!("{}", dice::print_dice(&dice_roll));
             println!("{}", dice::roll(&dice_roll));
         }
     } else {
@@ -121,3 +118,57 @@ fn main() {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stats_std() {
+        let expected = [15, 14, 13, 12, 10, 8];
+        assert_eq!(expected, stats("std"));
+        assert_eq!(expected, stats("standard"));
+    }
+
+    #[test]
+    fn test_stats_1d20() {
+        let result = stats("1d20");
+        for _ in 1..10 {
+            for i in 0..6 {
+                assert!(result[i] > 0);
+                assert!(result[i] <= 20);
+            }
+        }
+    }
+    #[test]
+    fn test_stats_d20() {
+        let result = stats("d20");
+        for _ in 1..10 {
+            for i in 0..6 {
+                assert!(result[i] > 0);
+                assert!(result[i] <= 20);
+            }
+        }
+    }
+
+    #[test]
+    fn test_stats_4d6() {
+        let result = stats("4d6");
+        for _ in 1..10 {
+            for i in 0..6 {
+                assert!(result[i] >= 3);
+                assert!(result[i] <= 18);
+            }
+        }
+    }
+    #[test]
+    fn test_stats_3d6() {
+        let result = stats("3d6");
+        for _ in 1..10 {
+            for i in 0..6 {
+                assert!(result[i] >= 3);
+                assert!(result[i] <= 18);
+            }
+        }
+    }
+}
