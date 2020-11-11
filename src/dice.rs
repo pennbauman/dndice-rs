@@ -2,14 +2,12 @@
 //   URL: https://github.com/pennbauman/dndice-rs
 //   Author:
 //     Penn Bauman (pennbauman@protonmail.com)
-use std::process;
-
 extern crate rand;
 use rand::Rng;
 
 pub type Roll = Vec<(bool, Vec<(i32, i32)>)>;
 
-pub fn parse(text: &str) -> Roll {
+pub fn parse(text: &str) -> Result<Roll, String> {
     let mut sum: Roll = vec![];
     let mut start = true;
     for add in text.split("+") {
@@ -20,8 +18,7 @@ pub fn parse(text: &str) -> Roll {
                 if start {
                     mult.push((1, 20));
                 } else {
-                    eprintln!("invalid equation");
-                    process::exit(1);
+                    return Err("Invalid math".to_string());
                 }
             } else {
                 for m in sub.split("*") {
@@ -34,8 +31,7 @@ pub fn parse(text: &str) -> Roll {
                         } else {
                             let result = d.parse();
                             if result.is_err() {
-                                eprintln!("invalid str '{}'", d);
-                                process::exit(1);
+                                return Err(format!("Invalid number '{}'", d));
                             }
                             if i == 0 {
                                 first = result.unwrap();
@@ -53,7 +49,7 @@ pub fn parse(text: &str) -> Roll {
             start = false;
         }
     }
-    return sum;
+    return Ok(sum);
 }
 
 pub fn roll(r: &Roll) -> i32 {
@@ -71,14 +67,11 @@ pub fn roll(r: &Roll) -> i32 {
                 }
             }
             product *= roll;
-            //println!("mult {}", roll);
         }
         if term.0 {
             sum += product;
-            //println!("add {}", product);
         } else {
             sum -= product;
-            //println!("sub {}", product);
         }
     }
     return sum;
@@ -123,14 +116,14 @@ mod tests {
         let expected: Roll = vec![
             (true, vec![(1, 6)])
         ];
-        assert_eq!(expected, parse("1d6"));
+        assert_eq!(expected, parse("1d6").unwrap());
     }
     #[test]
     fn test_parse_d8() {
         let expected: Roll = vec![
             (true, vec![(1, 8)])
         ];
-        assert_eq!(expected, parse("d8"));
+        assert_eq!(expected, parse("d8").unwrap());
     }
     #[test]
     fn test_parse_1d4_plus_2() {
@@ -138,7 +131,7 @@ mod tests {
             (true, vec![(1, 4)]),
             (true, vec![(2, 1)])
         ];
-        assert_eq!(expected, parse("1d4+2"));
+        assert_eq!(expected, parse("1d4+2").unwrap());
     }
     #[test]
     fn test_parse_1d12_minus_7() {
@@ -146,14 +139,14 @@ mod tests {
             (true, vec![(1, 12)]),
             (false, vec![(7, 1)])
         ];
-        assert_eq!(expected, parse("1d12-7"));
+        assert_eq!(expected, parse("1d12-7").unwrap());
     }
     #[test]
     fn test_parse_2d4_times_10() {
         let expected: Roll = vec![
             (true, vec![(2, 4), (10, 1)])
         ];
-        assert_eq!(expected, parse("2d4*10"));
+        assert_eq!(expected, parse("2d4*10").unwrap());
     }
     #[test]
     fn test_parse_plus_5() {
@@ -161,7 +154,7 @@ mod tests {
             (true, vec![(1, 20)]),
             (true, vec![(5, 1)])
         ];
-        assert_eq!(expected, parse("+5"));
+        assert_eq!(expected, parse("+5").unwrap());
     }
     #[test]
     fn test_parse_all() {
@@ -171,7 +164,19 @@ mod tests {
             (false, vec![(5, 1), (8, 12)]),
             (true, vec![(3, 1)])
         ];
-        assert_eq!(expected, parse("+d7-5*8d12+3"));
+        assert_eq!(expected, parse("+d7-5*8d12+3").unwrap());
+    }
+    #[test]
+    fn test_parse_invalid_math() {
+        let result = parse("1d4+");
+        assert!(result.is_err());
+        assert_eq!("Invalid math".to_string(), result.unwrap_err());
+    }
+    #[test]
+    fn test_parse_invalid_number() {
+        let result = parse("1da");
+        assert!(result.is_err());
+        assert_eq!("Invalid number 'a'".to_string(), result.unwrap_err());
     }
 
     // roll()

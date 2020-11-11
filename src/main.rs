@@ -5,7 +5,22 @@
 use std::env;
 use std::process;
 
+extern crate colored;
+use colored::*;
+
 mod dice;
+
+#[macro_export]
+macro_rules! err {
+    ( $a:expr ) => {
+        eprintln!("{} {}", "Error:".red(), $a);
+        process::exit(1);
+    };
+    ( $a:expr, $b:expr ) => {
+        eprintln!("{} {} '{}'", "Error:".red(), $a, $b);
+        process::exit(1);
+    };
+}
 
 // Generate a print one set of statistics
 fn stats(stats_type: &str) -> [i32; 6] {
@@ -14,11 +29,11 @@ fn stats(stats_type: &str) -> [i32; 6] {
         return [15, 14, 13, 12, 10, 8]
     // 1d20 for each stat
     } else if (stats_type == "d20") || (stats_type == "1d20") {
-        let d20 = dice::parse("d20");
-        //println!("Stats:");
+        let d20 = dice::parse("d20").unwrap();
         let mut score: [i32; 6] = [0; 6];
         for i in 0..6 {
             let result = dice::roll(&d20);
+            // Sort stats list as new scores are added
             let mut j = i;
             loop {
                 if (j == 0) || (score[j-1] >= result) {
@@ -32,10 +47,10 @@ fn stats(stats_type: &str) -> [i32; 6] {
         return score;
     // Best 3 of 4d6 for each stat
     } else if (stats_type == "4d6") || (stats_type == "3d6") {
-        let d6 = dice::parse("d6");
-        //println!("Stats:");
+        let d6 = dice::parse("d6").unwrap();
         let mut score: [i32; 6] = [0; 6];
         for i in 0..6 {
+            // Roll 3d4 subtract min
             let mut min: i32 = 20;
             let mut result: i32 = 0;
             let mut result_r: i32;
@@ -47,6 +62,7 @@ fn stats(stats_type: &str) -> [i32; 6] {
                 }
             }
             result -= min;
+            // Sort stats list as new scores are added
             let mut j = i;
             loop {
                 if (j == 0) || (score[j-1] >= result) {
@@ -60,32 +76,32 @@ fn stats(stats_type: &str) -> [i32; 6] {
         return score;
     // Unknown generation type
     } else {
-        eprintln!("unknown stats type");
-        process::exit(1);
+        err!("Unknown statistics generation type");
     }
 }
 
 // Main function
 fn main() {
     let args: Vec<String> = env::args().collect();
-    //println!("{:?}", args);
 
     // Parse args
     let mut dice_args: Vec<String> = vec![];
     for i in 1..args.len() {
+        // Print help menu
         if (args[i] == "--help") || (args[i] == "-h") {
             //print_help();
             println!("help");
             process::exit(0);
+        // Print version number
         } else if args[i] == "--version" {
             println!("DnDice version {}", env!("CARGO_PKG_VERSION"));
             process::exit(0);
+        // Concatinate non option parameters
         } else {
-            if args[i].chars().nth(0).unwrap() == '-' {
+            if (args[i] != "-") && (args[i].chars().nth(0).unwrap() == '-') {
                 let result = &args[i].parse::<i32>();
                 if result.is_err() {
-                    eprintln!("invalid option '{}'", args[i]);
-                    process::exit(1);
+                    err!("Invalid option", args[i]);
                 }
             }
             dice_args.push(args[i].to_string());
@@ -93,28 +109,39 @@ fn main() {
     }
 
     if dice_args.len() > 0 {
+        // Generate statistics
         if dice_args[0] == "stats" {
             if dice_args.len() == 2 {
+                let scores = stats(&dice_args[1]);
                 println!("Stats:");
-                for s in &stats(&dice_args[1]) {
+                for s in &scores {
                     print!("{:2} ", s);
                 }
                 println!();
             } else {
-                eprintln!("wrong args for stats");
-                process::exit(1);
+                err!("No statistics method provided");
             }
+        // Roll dice
         } else {
+            // Concatinate dice string
             let mut dice_text: String = "".to_string();
             for d in dice_args {
-                dice_text += &d;
+                for s in d.split_whitespace() {
+                    dice_text += &s;
+                }
             }
-            let dice_roll = dice::parse(&dice_text);
-            println!("{}", dice::print_dice(&dice_roll));
+            let dice_parse = dice::parse(&dice_text);
+            if dice_parse.is_err() {
+                err!(dice_parse.unwrap_err());
+            }
+            let dice_roll = dice_parse.unwrap();
+            // Roll dice
+            println!("{} ", dice::print_dice(&dice_roll));
+
             println!("{}", dice::roll(&dice_roll));
         }
     } else {
-        eprintln!("no dice or command provided")
+        err!("No dice or command provided");
     }
 }
 
