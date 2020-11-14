@@ -1,6 +1,6 @@
 [package]
 name = "dndice"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Penn Bauman <pennbauman@protonmail.com>"]
 description = "D&D format command line dice roller and statistics generator"
 edition = "2018"
@@ -9,3 +9,7 @@ repository = "https://github.com/pennbauman/dndice-rs"
 [dependencies]
 rand = "0.7.3"
 colored = "2"
+
+[dev-dependencies]
+assert_cmd = "1.0.1"
+predicates = "1.0.2"

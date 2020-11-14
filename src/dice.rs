@@ -2,8 +2,8 @@
 //   URL: https://github.com/pennbauman/dndice-rs
 //   Author:
 //     Penn Bauman (pennbauman@protonmail.com)
-extern crate rand;
 use rand::Rng;
+
 
 pub type Roll = Vec<(bool, Vec<(i32, i32)>)>;
 

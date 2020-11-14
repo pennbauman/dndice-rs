@@ -5,10 +5,10 @@
 use std::env;
 use std::process;
 
-extern crate colored;
 use colored::*;
 
 mod dice;
+
 
 // Print error well formated
 #[macro_export]
