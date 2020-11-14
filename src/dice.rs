@@ -52,8 +52,9 @@ pub fn parse(text: &str) -> Result<Roll, String> {
     return Ok(sum);
 }
 
-pub fn roll(r: &Roll) -> i32 {
+pub fn roll(r: &Roll) -> (i32, String) {
     let mut sum: i32 = 0;
+    let mut all_rolls: Vec<(i32, Vec<i32>)> = vec![];
     for term in r {
         let mut product: i32 = 1;
         for mult in &term.1 {
@@ -61,10 +62,14 @@ pub fn roll(r: &Roll) -> i32 {
             if mult.1 == 1 {
                 roll = mult.0;
             } else {
+                let mut current_rolls: Vec<i32> = vec![];
                 for _r in 0..mult.0 {
-                    roll += rand::thread_rng().gen_range(1, mult.1 + 1);
+                    let this_roll = rand::thread_rng().gen_range(1, mult.1 + 1);
                     //println!("{}d{} {}", mult.0, mult.1, roll);
+                    roll += this_roll;
+                    current_rolls.push(this_roll);
                 }
+                all_rolls.push((mult.1, current_rolls));
             }
             product *= roll;
         }
@@ -74,7 +79,22 @@ pub fn roll(r: &Roll) -> i32 {
             sum -= product;
         }
     }
-    return sum;
+    let mut rolls_text: String = "".to_string();
+    if all_rolls.len() > 1 {
+        for d in all_rolls {
+            rolls_text += &format!("| d{}: ", d.0);
+            for r in d.1 {
+                rolls_text += &format!("{} ", r);
+            }
+        }
+    } else {
+        rolls_text += "| ";
+        for r in &all_rolls[0].1 {
+            rolls_text += &format!("{} ", r);
+        }
+    }
+    //println!("{}", rolls_text);
+    return (sum, rolls_text);
 }
 
 pub fn print_dice(r: &Roll) -> String {
@@ -187,7 +207,7 @@ mod tests {
         ];
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += roll(&d);
+            sum += roll(&d).0;
         }
         assert!(sum <= 2000);
         assert!(sum >= 100);
@@ -200,7 +220,7 @@ mod tests {
         ];
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += roll(&d);
+            sum += roll(&d).0;
         }
         assert!(sum <= 900);
         assert!(sum >= 400);
@@ -213,7 +233,7 @@ mod tests {
         ];
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += roll(&d);
+            sum += roll(&d).0;
         }
         assert!(sum <= 200);
         assert!(sum >= -100);
@@ -225,7 +245,7 @@ mod tests {
         ];
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += roll(&d);
+            sum += roll(&d).0;
         }
         assert!(sum <= 2100);
         assert!(sum >= 200);
@@ -240,7 +260,7 @@ mod tests {
         ];
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += roll(&d);
+            sum += roll(&d).0;
         }
         assert!(sum <= 31900);
         assert!(sum >= -36000);

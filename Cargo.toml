@@ -1,6 +1,6 @@
 [package]
 name = "dndice"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Penn Bauman <pennbauman@protonmail.com>"]
 description = "D&D format command line dice roller and statistics generator"
 edition = "2018"
