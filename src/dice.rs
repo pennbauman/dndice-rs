@@ -5,8 +5,10 @@
 use rand::Rng;
 
 
+// Rollable dice type
 pub type Roll = Vec<(bool, Vec<(i32, i32)>)>;
 
+// Parse string into dice roll
 pub fn parse(text: &str) -> Result<Roll, String> {
     let mut sum: Roll = vec![];
     let mut start = true;
@@ -22,6 +24,9 @@ pub fn parse(text: &str) -> Result<Roll, String> {
                 }
             } else {
                 for m in sub.split("*") {
+                    if m == "" {
+                        return Err("Invalid math".to_string());
+                    }
                     let mut i: u8 = 0;
                     let mut first: i32 = 0;
                     let mut second: i32 = 1;
@@ -52,6 +57,7 @@ pub fn parse(text: &str) -> Result<Roll, String> {
     return Ok(sum);
 }
 
+// Roll provided dice
 pub fn roll(r: &Roll) -> (i32, String) {
     let mut sum: i32 = 0;
     let mut all_rolls: Vec<(i32, Vec<i32>)> = vec![];

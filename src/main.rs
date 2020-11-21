@@ -82,16 +82,26 @@ fn stats(stats_type: &str) -> [i32; 6] {
     }
 }
 
-// Print help menu
+// Print help text
 fn print_help() {
-    println!("help");
-    // --help, -h
-    // --version
-    // --number, -n
-    // --quiet, -q
-
-    // stats [std,standard|d20,1d20|3d6,4d6]
-    // dice
+    println!("Usage: dndice [command] [dice] [options]");
+    println!();
+    println!("Commands:");
+    println!("  dice [dice]         Roll provided dice, used if no command is provided");
+    println!("  stats [method]      Generates a set of six statistics with the provided method");
+    println!("    std, standard       Use the standard 5th edition statistics array");
+    println!("    1d20                Roll 1d20 for each score");
+    println!("    4d6                 Roll 4d6 and sum the largest 3 for each score");
+    println!();
+    println!("Dice Format:");
+    println!("  TO DO");
+    println!();
+    println!("Options:");
+    println!("  --help, -h          Print this help menu");
+    println!("  --version           Print the version number");
+    println!("  --number, -n [num]  Repeat command the provided number of times");
+    println!("  --quiet, -q         Print only essential information from command");
+    println!();
 }
 
 
@@ -105,7 +115,7 @@ fn main() {
     // Parse args
     let mut i: usize = 1;
     while i < args.len() {
-        // Print help menu
+        // Print help text
         if (args[i] == "--help") || (args[i] == "-h") {
             print_help();
             process::exit(0);
@@ -161,8 +171,14 @@ fn main() {
         } else {
             // Concatinate dice string
             let mut dice_text: String = "".to_string();
-            for d in dice_args {
-                for s in d.split_whitespace() {
+            let start_arg: usize;
+            if dice_args[1] == "dice" {
+                start_arg = 1;
+            } else {
+                start_arg = 0;
+            }
+            for i in start_arg..dice_args.len() {
+                for s in dice_args[i].split_whitespace() {
                     dice_text += &s;
                 }
             }

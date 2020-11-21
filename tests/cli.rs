@@ -5,6 +5,7 @@
 use assert_cmd::prelude::*;
 use std::process::Command;
 
+
 // Check split string and vector match, numbers are replaced with "" in vec
 fn check_pattern(output: String, pattern: Vec<&str>) {
     let mut i = 0;
@@ -17,6 +18,7 @@ fn check_pattern(output: String, pattern: Vec<&str>) {
         i += 1;
     }
 }
+
 
 // General errors
 #[test]
@@ -144,6 +146,15 @@ fn test_dice_risky_spacing() -> Result<(), Box<dyn std::error::Error>> {
     check_pattern(output, expected);
     Ok(())
 }
+#[test]
+fn test_dice_command() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("dndice")?;
+    cmd.arg("roll").arg("1d4").arg("-1");
+    let output = String::from_utf8(cmd.output().unwrap().stdout).unwrap();
+    let expected = vec!["1d4", "-", "1", "|", "", "Result:", ""];
+    check_pattern(output, expected);
+    Ok(())
+}
 
 // --number N
 #[test]
@@ -196,4 +207,3 @@ fn test_quiet_option_dice() -> Result<(), Box<dyn std::error::Error>> {
     check_pattern(output, expected);
     Ok(())
 }
-

@@ -1,10 +1,13 @@
 [package]
 name = "dndice"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Penn Bauman <pennbauman@protonmail.com>"]
-description = "D&D format command line dice roller and statistics generator"
 edition = "2018"
+description = "DnD format command line dice roller and statistics generator"
+readme = "README.md"
 repository = "https://github.com/pennbauman/dndice-rs"
+keywords = ["dnd", "dice"]
+categories = ["command-line-utilities", "games"]
 
 [dependencies]
 rand = "0.7.3"
