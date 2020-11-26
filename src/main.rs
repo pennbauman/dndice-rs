@@ -10,15 +10,17 @@ use colored::*;
 mod dice;
 
 
-// Print error well formated
+// Print error well formatted
 #[macro_export]
 macro_rules! err {
     ( $a:expr ) => {
         eprintln!("{} {}", "Error:".red(), $a);
+        eprintln!("  Use 'dndice --help' for more information");
         process::exit(1);
     };
     ( $a:expr, $b:expr ) => {
         eprintln!("{} {} '{}'", "Error:".red(), $a, $b);
+        eprintln!("  Use 'dndice --help' for more information");
         process::exit(1);
     };
 }
@@ -94,7 +96,10 @@ fn print_help() {
     println!("    4d6                 Roll 4d6 and sum the largest 3 for each score");
     println!();
     println!("Dice Format:");
-    println!("  TO DO");
+    println!("  Each expression uses dice sets, numbers, and the '+', '-', and '*' operators");
+    println!("  Dice sets use '#d#' where the '#'s indicate dice quantity and size respectively.");
+    println!("  Dice are rolled individually and their results summed and combined by operators");
+    println!("  A '+' or '-' at the beginning indicates 1d20 will be added to the result");
     println!();
     println!("Options:");
     println!("  --help, -h          Print this help menu");
@@ -172,7 +177,7 @@ fn main() {
             // Concatinate dice string
             let mut dice_text: String = "".to_string();
             let start_arg: usize;
-            if dice_args[1] == "dice" {
+            if dice_args[0] == "dice" {
                 start_arg = 1;
             } else {
                 start_arg = 0;
