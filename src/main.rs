@@ -4,10 +4,8 @@
 //     Penn Bauman (pennbauman@protonmail.com)
 use std::env;
 use std::process;
-
 use colored::*;
-
-mod dice;
+use dndice;
 
 
 // Print error well formatted
@@ -33,10 +31,10 @@ fn stats(stats_type: &str) -> [i32; 6] {
         return [15, 14, 13, 12, 10, 8];
     // 1d20 for each stat
     } else if (stats_type == "d20") || (stats_type == "1d20") {
-        let d20 = dice::parse("d20").unwrap();
+        let d20 = dndice::parse("d20").unwrap();
         let mut score: [i32; 6] = [0; 6];
         for i in 0..6 {
-            let result = dice::roll(&d20).0;
+            let result = dndice::roll(&d20).0;
             // Sort stats list as new scores are added
             let mut j = i;
             loop {
@@ -51,7 +49,7 @@ fn stats(stats_type: &str) -> [i32; 6] {
         return score;
     // Best 3 of 4d6 for each stat
     } else if (stats_type == "4d6") || (stats_type == "3d6") {
-        let d6 = dice::parse("d6").unwrap();
+        let d6 = dndice::parse("d6").unwrap();
         let mut score: [i32; 6] = [0; 6];
         for i in 0..6 {
             // Roll 3d4 subtract min
@@ -59,7 +57,7 @@ fn stats(stats_type: &str) -> [i32; 6] {
             let mut result: i32 = 0;
             let mut result_r: i32;
             for _ in 0..4 {
-                result_r = dice::roll(&d6).0;
+                result_r = dndice::roll(&d6).0;
                 result += result_r;
                 if result_r < min {
                     min = result_r;
@@ -187,16 +185,16 @@ fn main() {
                     dice_text += &s;
                 }
             }
-            let dice_parse = dice::parse(&dice_text);
+            let dice_parse = dndice::parse(&dice_text);
             if dice_parse.is_err() {
                 err!(dice_parse.unwrap_err());
             }
             let dice_roll = dice_parse.unwrap();
             // Roll dice
             for _ in 0..num_rolls {
-                let dice_result = dice::roll(&dice_roll);
+                let dice_result = dndice::roll(&dice_roll);
                 if loud {
-                    print!("{} ", dice::print_dice(&dice_roll));
+                    print!("{} ", dndice::print_dice(&dice_roll));
                     println!("{}", dice_result.1);
                     print!("Result: ");
                 }

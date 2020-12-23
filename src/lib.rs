@@ -4,7 +4,6 @@
 //     Penn Bauman (pennbauman@protonmail.com)
 use rand::Rng;
 
-
 // Rollable dice type
 pub type Roll = Vec<(bool, Vec<(i32, i32)>)>;
 
@@ -103,6 +102,7 @@ pub fn roll(r: &Roll) -> (i32, String) {
     return (sum, rolls_text);
 }
 
+// Create formatted string for roll
 pub fn print_dice(r: &Roll) -> String {
     let mut text: String = "".to_string();
     let mut term_later = false;
