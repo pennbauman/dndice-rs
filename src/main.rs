@@ -7,6 +7,7 @@ use std::process;
 use colored::*;
 use dndice;
 
+mod dice;
 
 // Print error well formatted
 #[macro_export]
