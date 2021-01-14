@@ -6,11 +6,12 @@ edition = "2018"
 description = "DnD format command line dice roller and statistics generator"
 readme = "README.md"
 repository = "https://github.com/pennbauman/dndice-rs"
+license = "MIT"
 keywords = ["dnd", "dice"]
 categories = ["command-line-utilities", "games"]
 
 [dependencies]
-rand = "0.7.3"
+rand = "0.7"
 colored = "2"
 
 [dev-dependencies]
