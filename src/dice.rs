@@ -1,147 +1,221 @@
-// DnDice
+// dice - DnDice
 //   URL: https://github.com/pennbauman/dndice-rs
 //   Author:
 //     Penn Bauman (pennbauman@protonmail.com)
-use rand::Rng;
 use std::fmt;
+use rand::Rng;
+use crate::log::{DiceRoll, RollLog};
+use crate::parse::{ParseKind, ParseState, DiceParseError};
 
-// Generic Dice type
-pub trait Dice: fmt::Display {
-    fn parse(text: &str) -> Result<Self, String> where Self: Sized;
-    fn roll(&self) -> DiceRoll;
+
+// Dice Expression
+#[derive(Debug)]
+pub enum DiceSet {
+    Sum(DiceSeries),
+    Mult(DiceSeries),
+    Die(Die),
+    Const(i32),
 }
-
-
-// Log of rolls preformed
-struct DiceRollLog {
-    size: i32,
-    rolls: Vec<i32>,
-}
-impl DiceRollLog {
-    fn new(s: i32) -> DiceRollLog {
-        DiceRollLog { size: s, rolls: vec![] }
+impl DiceSet {
+    pub fn new() -> Self {
+        Self::Const(0)
     }
-    fn copy(src: &DiceRollLog) -> DiceRollLog {
-        let mut fin = DiceRollLog::new(src.size);
-        for l in &src.rolls {
-            fin.rolls.push(*l);
+    pub fn parse(text: &str) -> Result<Self, DiceParseError> {
+        let parser = match ParseState::parse_from(text) {
+            Ok(p) => p,
+            Err(e) => return Err(DiceParseError::InvalidChar(e)),
+        };
+        let splits = parser.splits();
+        match parser.kind() {
+            ParseKind::Sum => {
+                let mut series: DiceSeries = vec![];
+                for s in splits {
+                    if s.0 == '+' {
+                        match SignedDice::parse_pos(&s.1) {
+                            Ok(d) => series.push(d),
+                            Err(e) => return Err(e),
+                        };
+                    } else if s.0 == '-' {
+                        match SignedDice::parse_neg(&s.1) {
+                            Ok(d) => series.push(d),
+                            Err(e) => return Err(e),
+                        };
+                    } else {
+                        panic!("invalid sum");
+                    }
+                }
+                return Ok(DiceSet::Sum(series));
+            },
+            ParseKind::Mult => {
+                let mut series: DiceSeries = vec![];
+                for s in splits {
+                    if s.1 == "" {
+                        return Err(DiceParseError::InvalidMath(String::from(text)));
+                    }
+                    let start = s.1.chars().next().unwrap();
+                    if start == '-' {
+                        match SignedDice::parse_neg(&s.1[1..]) {
+                            Ok(d) => series.push(d),
+                            Err(e) => return Err(e),
+                        }
+                    } else {
+                        match SignedDice::parse_pos(&s.1) {
+                            Ok(d) => series.push(d),
+                            Err(e) => return Err(e),
+                        }
+                    }
+                }
+                return Ok(DiceSet::Mult(series));
+            },
+            ParseKind::Die => {
+                if splits.len() == 2 {
+                    let mut num = 1;
+                    if splits[0].1 != "" {
+                        num = match splits[0].1.parse::<i32>() {
+                            Ok(i) => i,
+                            Err(_) => return Err(DiceParseError::InvalidNumber(
+                                splits[0].1.to_string()
+                            )),
+                        };
+                    }
+                    let size = match splits[1].1.parse::<i32>() {
+                        Ok(i) => i,
+                        Err(_) => return Err(DiceParseError::InvalidNumber(
+                            splits[1].1.to_string()
+                        )),
+                    };
+                    return Ok(Self::Die(Die::new(num, size)));
+                } else {
+                    println!("'{}' {:?}", text, splits);
+                    return Err(DiceParseError::InvalidDie(String::from(text)));
+                }
+            },
+            ParseKind::Const => {
+                match text.parse::<i32>() {
+                    Ok(i) => return Ok(Self::Const(i)),
+                    Err(_) => return Err(DiceParseError::InvalidNumber(
+                            String::from(text)
+                    )),
+                }
+            },
         }
-        return fin;
     }
-    fn log(&mut self, s: i32) {
-        if (s < 0) || (s > self.size) {
-            panic!("Invalid number logged");
+
+    pub fn roll(&self) -> DiceRoll {
+        match self {
+            Self::Mult(series) => {
+                let mut result = DiceRoll::new(1);
+                for d in series {
+                    match d {
+                        SignedDice::Pos(x) => result.mult(&x.roll()),
+                        SignedDice::Neg(x) => result.mult_neg(&x.roll()),
+                    }
+                }
+                return result;
+            },
+            Self::Sum(series) => {
+                let mut result = DiceRoll::new(0);
+                for d in series {
+                    match d {
+                        SignedDice::Pos(x) => result.add(&x.roll()),
+                        SignedDice::Neg(x) => result.sub(&x.roll()),
+                    }
+                }
+                return result;
+            },
+            Self::Die(d) => d.roll(),
+            Self::Const(x) => DiceRoll::new(*x),
         }
-        self.rolls.push(s);
     }
 }
-
-// Results from Dice
-pub struct DiceRoll {
-    rolled: i32,
-    log: Vec<DiceRollLog>,
-}
-impl DiceRoll {
-    fn new(x: i32) -> DiceRoll {
-        DiceRoll { rolled: x, log: vec![] }
-    }
-    fn join(&mut self, other: &DiceRoll) {
-        for l in &other.log {
-            self.log.push(DiceRollLog::copy(&*l));
-        }
-    }
-    fn add(&mut self, other: &DiceRoll) {
-        self.rolled += other.rolled;
-        self.join(&other);
-    }
-    fn sub(&mut self, other: &DiceRoll) {
-        self.rolled -= other.rolled;
-        self.join(&other);
-    }
-    fn mult(&mut self, other: &DiceRoll) {
-        self.rolled *= other.rolled;
-        self.join(&other);
-    }
-}
-
-
-// Single constant
-pub struct ConstDie {
-    value: i32,
-}
-impl ConstDie {
-    fn new(x: i32) -> ConstDie {
-        ConstDie { value: x }
-    }
-}
-impl Dice for ConstDie {
-    fn parse(text: &str) -> Result<ConstDie, String> {
-        let result = text.parse();
-        if result.is_err() {
-            return Err(format!("Invalid number '{}'", text));
-        }
-        Ok(ConstDie::new(result.unwrap()))
-
-    }
-    fn roll(&self) -> DiceRoll {
-        DiceRoll::new(self.value)
-    }
-}
-impl fmt::Display for ConstDie {
+impl fmt::Display for DiceSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.value)
+        let mut result = String::from("");
+        let mut i: u8 = 0;
+        match self {
+            Self::Sum(s) => {
+                for d in s {
+                    if i == 0 {
+                        match d {
+                            SignedDice::Pos(d) => result.push_str(&format!("{}", d)),
+                            SignedDice::Neg(d) => result.push_str(&format!("-{}", d)),
+                        }
+                    } else {
+                        match d {
+                            SignedDice::Pos(d) => result.push_str(&format!(" + {}", d)),
+                            SignedDice::Neg(d) => result.push_str(&format!(" - {}", d)),
+                        }
+                    }
+                    i += 1;
+                }
+                return write!(f, "{}", result);
+            },
+            Self::Mult(s) => {
+                for d in s {
+                    if i == 0 {
+                        match d {
+                            SignedDice::Pos(d) => result.push_str(&format!("{}", d)),
+                            SignedDice::Neg(d) => result.push_str(&format!("-{}", d)),
+                        }
+                    } else {
+                        match d {
+                            SignedDice::Pos(d) => result.push_str(&format!("x{}", d)),
+                            SignedDice::Neg(d) => result.push_str(&format!("x-{}", d)),
+                        }
+                    }
+                    i += 1;
+                }
+                return write!(f, "{}", result);
+            },
+            Self::Die(d) => return write!(f, "{}", d),
+            Self::Const(n) => return write!(f, "{}", n),
+        }
     }
 }
 
 
-// Single set of same sized die
+// Dice Array
+type DiceSeries = Vec<SignedDice>;
+
+
+// Signed Dice Set
+#[derive(Debug)]
+pub enum SignedDice {
+    Pos(DiceSet),
+    Neg(DiceSet),
+}
+impl SignedDice {
+    fn parse_pos(text: &str) -> Result<SignedDice, DiceParseError> {
+        Ok(SignedDice::Pos(DiceSet::parse(text)?))
+    }
+    fn parse_neg(text: &str) -> Result<SignedDice, DiceParseError> {
+        Ok(SignedDice::Neg(DiceSet::parse(text)?))
+    }
+}
+
+
+// Dice with one size
+#[derive(Debug)]
 pub struct Die {
     number: i32,
     sides: i32
 }
 impl Die {
-    fn new(n: i32, s: i32) -> Die {
+    pub fn new(n: i32, s: i32) -> Die {
         Die {
             number: n,
             sides: s,
         }
     }
-}
-impl Dice for Die {
-    fn parse(text: &str) -> Result<Die, String> {
-        let mut i: u8 = 0;
-        let mut n: i32 = 0;
-        let mut s: i32 = 1;
-        for d in text.split("d") {
-            if i == 2 {
-                return Err(format!("Invalid die '{}'", text));
-            }
-            if (d == "") && (i == 0) {
-                n = 1;
-            } else {
-                let result = d.parse();
-                if result.is_err() {
-                    return Err(format!("Invalid number '{}'", d));
-                }
-                if i == 0 {
-                    n = result.unwrap();
-                } else {
-                    s = result.unwrap();
-                }
-            }
-            i += 1;
-        }
-        Ok(Die::new(n, s))
-    }
-    fn roll(&self) -> DiceRoll {
-        let mut result = DiceRoll::new(0);
-        let mut rolls_log = DiceRollLog::new(self.sides);
+    pub fn roll(&self) -> DiceRoll {
+        let mut sum = 0;
+        let mut log = RollLog::new(self.sides);
         for _ in 0..self.number {
-            let this_roll = rand::thread_rng().gen_range(1, self.sides + 1);
-            result.rolled += this_roll;
-            rolls_log.log(this_roll);
+            let r = rand::thread_rng().gen_range(1, self.sides + 1);
+            sum += r;
+            log.log(r);
         }
-        result.log.push(rolls_log);
+        let result = DiceRoll::new_roll(sum, log);
         return result;
     }
 
@@ -153,209 +227,121 @@ impl fmt::Display for Die {
 }
 
 
-// Multiplication type
-enum Multiplier {
-    Const(ConstDie),
-    Die(Die),
-}
-pub struct MultDice {
-    dice: Vec<Multiplier>,
-}
-impl MultDice {
-    fn new() -> MultDice {
-        MultDice { dice: vec![] }
-    }
-}
-impl Dice for MultDice {
-    fn parse(text: &str) -> Result<Self, String> where Self: Sized {
-        let mut new = MultDice::new();
-        for m in text.split(|c| c == 'x' || c == 'X' || c == '*') {
-            let d = Die::parse(m);
-            if d.is_ok() {
-                new.dice.push(Multiplier::Die(d.unwrap()));
-            } else {
-                let c = ConstDie::parse(m)?;
-                new.dice.push(Multiplier::Const(c));
-            }
-        }
-        Ok(new)
-    }
-    fn roll(&self) -> DiceRoll {
-        let mut result = DiceRoll::new(1);
-        for m in &self.dice {
-            match m {
-                Multiplier::Const(c) => result.mult(&c.roll()),
-                Multiplier::Die(d) => result.mult(&d.roll()),
-            }
-        }
-        return result;
-    }
-}
-impl fmt::Display for MultDice {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-
-// Summation type
-enum Addend {
-    Const(ConstDie),
-    Plus(Die),
-    Minus(Die),
-    Multiplication(MultDice)
-}
-pub struct SumDice {
-    dice: Vec<Addend>,
-}
-impl SumDice {
-    fn new() -> SumDice {
-        SumDice { dice: vec![] }
-    }
-}
-impl Dice for SumDice {
-    fn parse(_text: &str) -> Result<Self, String> where Self: Sized {
-        todo!()
-    }
-    fn roll(&self) -> DiceRoll {
-        todo!()
-    }
-}
-impl fmt::Display for SumDice {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-
-// Classic DnD dice type
-pub struct ClassicDice {
-    dice: SumDice
-}
-impl ClassicDice {
-    fn new() -> ClassicDice {
-        ClassicDice { dice: SumDice::new() }
-    }
-}
-impl Dice for ClassicDice {
-    fn parse(_text: &str) -> Result<Self, String> where Self: Sized {
-        todo!()
-    }
-    fn roll(&self) -> DiceRoll {
-        todo!()
-    }
-}
-impl fmt::Display for ClassicDice {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // DiceRollLog
+    // DiceSet (whitebox)
     #[test]
-    fn test_dice_roll_log_new() {
-        let log = DiceRollLog::new(5);
-        assert_eq!(log.size, 5);
-        assert_eq!(log.rolls.len(), 0);
+    fn test_dice_set_new() {
+        let x = match DiceSet::new() {
+            DiceSet::Const(n) => n,
+            _ => panic!(),
+        };
+        assert!(x == 0);
     }
     #[test]
-    fn test_dice_roll_log_log() {
-        let mut log = DiceRollLog::new(12);
-        log.log(7);
-        assert_eq!(log.size, 12);
-        assert_eq!(log.rolls[0], 7);
+    fn test_dice_set_parse() {
+        let ds = DiceSet::parse("-1d8+2*-4-3").unwrap();
+        match ds {
+            DiceSet::Sum(s) => {
+                // -1d8
+                match &s[0] {
+                    SignedDice::Neg(x) => match x {
+                        DiceSet::Die(d) => {
+                            if format!("{}", d) != "1d8" {
+                                panic!();
+                            }
+                        },
+                        _ => panic!(),
+                    },
+                    _ => panic!(),
+                }
+                // 2*-4
+                match &s[1] {
+                    SignedDice::Pos(x) => match x {
+                        DiceSet::Mult(arr) => {
+                            match &arr[0] {
+                                SignedDice::Pos(n) => match n {
+                                    DiceSet::Const(i) => assert!(*i == 2),
+                                    _ => panic!(),
+                                },
+                                _ => panic!(),
+                            }
+                            match &arr[1] {
+                                SignedDice::Neg(n) => match n {
+                                    DiceSet::Const(i) => assert!(*i == 4),
+                                    _ => panic!(),
+                                },
+                                _ => panic!(),
+                            }
+                        },
+                        _ => panic!(),
+                    }
+                    _ => panic!(),
+                }
+                // -3
+                match &s[2] {
+                    SignedDice::Neg(x) => match x {
+                        DiceSet::Const(i) => assert!(*i == 3),
+                        _ => panic!(),
+                    },
+                    _ => panic!(),
+                }
+            },
+            _ => panic!(),
+        }
     }
     #[test]
-    #[should_panic]
-    fn test_dice_roll_log_log_fail() {
-        let mut log = DiceRollLog::new(12);
-        log.log(17);
+    fn test_dice_set_parse_err() {
+        let ds = DiceSet::parse("1f4+ 2");
+        assert!(match ds {
+            Ok(_) => false,
+            Err(e) => match e {
+                DiceParseError::InvalidChar(c) => c == 'f',
+                _ => false,
+            },
+        });
     }
     #[test]
-    fn test_dice_roll_log_copy() {
-        let mut l1 = DiceRollLog::new(8);
-        l1.log(2);
-        l1.log(6);
-        let l2 = DiceRollLog::copy(&l1);
-        assert_eq!(l1.size, l2.size);
-        assert_eq!(l1.rolls[0], l2.rolls[0]);
-        assert_eq!(l1.rolls[1], l2.rolls[1]);
+    fn test_dice_set_roll() {
+        let ds = DiceSet::parse("5d6 - 1d8 + 7").unwrap();
+        let mut sum: i32 = 0;
+        for _ in 1..100 {
+            sum += ds.roll().num();
+        }
+        assert!(sum <= 36*100);
+        assert!(sum >= 4*100);
+    }
+    #[test]
+    fn test_dice_set_fmt() {
+        let ds = DiceSet::parse("5*3d4 + 1d12").unwrap();
+        assert!(format!("{}", ds) == "5x3d4 + 1d12")
     }
 
-    // DiceRoll
+    // SignedDice
     #[test]
-    fn test_dice_roll_new() {
-        let r = DiceRoll::new(3);
-        assert_eq!(r.rolled, 3);
-        assert_eq!(r.log.len(), 0);
+    fn test_signed_dice_pos() {
+        let sd = SignedDice::parse_pos("4").unwrap();
+        assert!(match sd {
+            SignedDice::Pos(p) => match p {
+                DiceSet::Const(x) => x == 4,
+                _ => false,
+            },
+            SignedDice::Neg(_) => false,
+        });
     }
     #[test]
-    fn test_dice_roll_join() {
-        let mut r1 = DiceRoll::new(0);
-        r1.log.push(DiceRollLog::new(4));
-        let mut r2 = DiceRoll::new(100);
-        r2.log.push(DiceRollLog::new(10));
-        r2.log.push(DiceRollLog::new(3));
-        r1.join(&r2);
-        assert_eq!(r1.rolled, 0);
-        assert_eq!(r1.log.len(), 3);
-    }
-    #[test]
-    fn test_dice_roll_add() {
-        let mut r1 = DiceRoll::new(2);
-        r1.log.push(DiceRollLog::new(7));
-        let r2 = DiceRoll::new(40);
-        r1.add(&r2);
-        assert_eq!(r1.rolled, 42);
-        assert_eq!(r1.log.len(), 1);
-    }
-    #[test]
-    fn test_dice_roll_sub() {
-        let mut r1 = DiceRoll::new(20);
-        let mut r2 = DiceRoll::new(7);
-        r2.log.push(DiceRollLog::new(9));
-        r1.sub(&r2);
-        assert_eq!(r1.rolled, 13);
-        assert_eq!(r1.log.len(), 1);
-    }
-    #[test]
-    fn test_dice_roll_mult() {
-        let mut r1 = DiceRoll::new(5);
-        r1.log.push(DiceRollLog::new(20));
-        let mut r2 = DiceRoll::new(8);
-        r2.log.push(DiceRollLog::new(1));
-        r1.mult(&r2);
-        assert_eq!(r1.rolled, 40);
-        assert_eq!(r1.log.len(), 2);
-    }
-
-    // ConstDie
-    #[test]
-    fn test_const_die_new() {
-        let c = ConstDie::new(7);
-        assert_eq!(c.value, 7);
-    }
-    #[test]
-    fn test_const_die_parse() {
-        let c = ConstDie::parse("1").unwrap();
-        assert_eq!(c.value, 1);
-    }
-    #[test]
-    #[should_panic]
-    fn test_const_die_parse_fail() {
-        ConstDie::parse("&").unwrap();
-    }
-    #[test]
-    fn test_const_die_roll() {
-        let c = ConstDie::new(9);
-        let r = c.roll();
-        assert_eq!(r.rolled, 9);
+    fn test_signed_dice_neg() {
+        let sd = SignedDice::parse_neg("7d8").unwrap();
+        println!("{:?}", sd);
+        assert!(match sd {
+            SignedDice::Pos(_) => false,
+            SignedDice::Neg(p) => match p {
+                DiceSet::Die(d) => "7d8" == &format!("{}", d),
+                _ => false,
+            },
+        });
     }
 
     // Die
@@ -366,45 +352,18 @@ mod tests {
         assert_eq!(d.sides, 6);
     }
     #[test]
-    fn test_die_parse() {
-        let d = Die::parse("3d4").unwrap();
-        assert_eq!(d.number, 3);
-        assert_eq!(d.sides, 4);
-    }
-    #[test]
-    #[should_panic]
-    fn test_die_parse_fail() {
-        Die::parse("1d1d").unwrap();
-    }
-    #[test]
     fn test_die_roll() {
-        let d = Die::parse("2d10").unwrap();
+        let d = Die::new(2, 10);
         let mut sum: i32 = 0;
         for _ in 1..100 {
-            sum += d.roll().rolled;
+            sum += d.roll().num();
         }
         assert!(sum <= 20*100);
         assert!(sum >= 2*100);
     }
-
-    // MultDice
     #[test]
-    fn test_mult_dice_new() {
-        let m = MultDice::new();
-        assert_eq!(m.dice.len(), 0);
-    }
-
-    // SumDice
-    #[test]
-    fn test_sum_dice_new() {
-        let s = SumDice::new();
-        assert_eq!(s.dice.len(), 0);
-    }
-
-    // ClassicDice
-    #[test]
-    fn test_classic_dice_new() {
-        let c = ClassicDice::new();
-        assert_eq!(c.dice.dice.len(), 0);
+    fn test_die_fmt() {
+        let d = Die::new(3, 4);
+        assert!("3d4" == format!("{}", d));
     }
 }
