@@ -5,7 +5,7 @@
 use std::env;
 use std::process;
 use colored::*;
-use dndice::{Dice, Stats};
+use dndice::{Dice, Scores};
 
 
 // Print error well formatted
@@ -100,7 +100,7 @@ fn main() {
                     println!("Stats:");
                 }
                 for _ in 0..num_rolls {
-                    let scores = match Stats::new(&dice_args[1]) {
+                    let scores = match Scores::from(&dice_args[1]) {
                         Ok(s) => s,
                         Err(_) => {
                             err!("Unknown statistics generation method");

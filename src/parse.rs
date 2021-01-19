@@ -5,14 +5,13 @@
 use std::fmt;
 
 
-// Error
+/// Error from failed parsing of dice from a string
 #[derive(Debug)]
 pub enum DiceParseError {
     InvalidNumber(String),
     InvalidDie(String),
     InvalidChar(char),
     InvalidMath(String),
-    Other(String),
 }
 impl fmt::Display for DiceParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -21,7 +20,6 @@ impl fmt::Display for DiceParseError {
             Self::InvalidDie(s) => write!(f, "Invalid die '{}'", s),
             Self::InvalidChar(s) => write!(f, "Invalid character '{}'", s),
             Self::InvalidMath(s) => write!(f, "Invalid expression '{}'", s),
-            Self::Other(s) => write!(f, "Error '{}'", s),
         }
     }
 }

@@ -10,8 +10,8 @@ mod parse;
 pub use parse::DiceParseError;
 mod log;
 use log::DiceRoll;
-mod stats;
-pub use stats::Stats;
+mod scores;
+pub use scores::Scores;
 
 
 #[derive(Debug)]
