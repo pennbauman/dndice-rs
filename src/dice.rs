@@ -14,7 +14,7 @@ pub enum DiceSet {
     Sum(DiceSeries),
     Mult(DiceSeries),
     Die(Die),
-    Const(i32),
+    Const(i64),
 }
 impl DiceSet {
     pub fn new() -> Self {
@@ -71,14 +71,14 @@ impl DiceSet {
                 if splits.len() == 2 {
                     let mut num = 1;
                     if splits[0].1 != "" {
-                        num = match splits[0].1.parse::<i32>() {
+                        num = match splits[0].1.parse::<u32>() {
                             Ok(i) => i,
                             Err(_) => return Err(DiceParseError::InvalidNumber(
                                 splits[0].1.to_string()
                             )),
                         };
                     }
-                    let size = match splits[1].1.parse::<i32>() {
+                    let size = match splits[1].1.parse::<u32>() {
                         Ok(i) => i,
                         Err(_) => return Err(DiceParseError::InvalidNumber(
                             splits[1].1.to_string()
@@ -91,7 +91,7 @@ impl DiceSet {
                 }
             },
             ParseKind::Const => {
-                match text.parse::<i32>() {
+                match text.parse::<i64>() {
                     Ok(i) => return Ok(Self::Const(i)),
                     Err(_) => return Err(DiceParseError::InvalidNumber(
                             String::from(text)
@@ -197,11 +197,11 @@ impl SignedDice {
 // Dice with one size
 #[derive(Debug)]
 pub struct Die {
-    number: i32,
-    sides: i32
+    number: u32,
+    sides: u32
 }
 impl Die {
-    pub fn new(n: i32, s: i32) -> Die {
+    pub fn new(n: u32, s: u32) -> Die {
         Die {
             number: n,
             sides: s,
@@ -211,9 +211,10 @@ impl Die {
         let mut sum = 0;
         let mut log = RollLog::new(self.sides);
         for _ in 0..self.number {
-            let r = rand::thread_rng().gen_range(1, self.sides + 1);
+            let range: i64 = self.sides.into();
+            let r: i64 = rand::thread_rng().gen_range(1..range + 1);
             sum += r;
-            log.log(r);
+            log.log(r.try_into().unwrap());
         }
         let result = DiceRoll::new_roll(sum, log);
         return result;

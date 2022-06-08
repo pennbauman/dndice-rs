@@ -8,10 +8,10 @@ use crate::dice::Die;
 /// A set of six ability scores
 #[derive(Debug)]
 pub struct Scores {
-    nums: [i32; 6],
+    nums: [u8; 6],
 }
 impl Scores {
-    fn new(mut nums_array: [i32; 6]) -> Self {
+    fn new(mut nums_array: [u8; 6]) -> Self {
         for s in &nums_array {
             if *s <= 0 {
                 panic!("impossible stat")
@@ -51,7 +51,7 @@ impl Scores {
         let dice = Die::new(1, 20);
         let mut stats = [0; 6];
         for i in 0..6 {
-            stats[i] = dice.roll().num();
+            stats[i] = dice.roll().num().try_into().unwrap();
         }
         return Self::new(stats);
     }
@@ -71,7 +71,7 @@ impl Scores {
                     min = temp;
                 }
             }
-            stats[i] = sum;
+            stats[i] = sum.try_into().unwrap();
         }
         return Self::new(stats);
     }

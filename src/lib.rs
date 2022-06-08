@@ -34,7 +34,7 @@ impl Dice {
     pub fn name<S: ToString>(&mut self, new_name: S) {
         self.name = Some(new_name.to_string());
     }
-    pub fn roll(&mut self) -> i32 {
+    pub fn roll(&mut self) -> i64 {
         let result = self.set.roll();
         let r = result.num();
         self.history.push(result);

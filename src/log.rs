@@ -8,20 +8,20 @@ use std::fmt;
 // Results from Dice
 #[derive(Debug)]
 pub struct DiceRoll {
-    rolled: i32,
+    rolled: i64,
     log: Vec<RollLog>,
 }
 impl DiceRoll {
     // Constructors
-    pub fn new(x: i32) -> DiceRoll {
+    pub fn new(x: i64) -> DiceRoll {
         DiceRoll { rolled: x, log: vec![] }
     }
-    pub fn new_roll(x: i32, roll: RollLog) -> DiceRoll {
+    pub fn new_roll(x: i64, roll: RollLog) -> DiceRoll {
         DiceRoll { rolled: x, log: vec![roll] }
     }
 
     // Accessors
-    pub fn num(&self) -> i32 {
+    pub fn num(&self) -> i64 {
         self.rolled
     }
     pub fn full_log(&self) -> String {
@@ -73,18 +73,18 @@ impl fmt::Display for DiceRoll {
 // Log of rolls preformed
 #[derive(Debug)]
 pub struct RollLog {
-    size: i32,
-    rolls: Vec<i32>,
+    size: u32,
+    rolls: Vec<u32>,
 }
 impl RollLog {
-    pub fn new(s: i32) -> Self {
+    pub fn new(s: u32) -> Self {
         Self { size: s, rolls: vec![] }
     }
-    pub fn size(&self) -> i32 {
+    pub fn size(&self) -> u32 {
         self.size
     }
-    pub fn log(&mut self, s: i32) {
-        if (s < 0) || (s > self.size) {
+    pub fn log(&mut self, s: u32) {
+        if s > self.size {
             panic!("Invalid number logged");
         }
         self.rolls.push(s);
