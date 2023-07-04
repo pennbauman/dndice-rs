@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn test_dice_set_roll() {
         let ds = DiceSet::parse("5d6 - 1d8 + 7").unwrap();
-        let mut sum: i32 = 0;
+        let mut sum: i64 = 0;
         for _ in 1..100 {
             sum += ds.roll().num();
         }
@@ -355,7 +355,7 @@ mod tests {
     #[test]
     fn test_die_roll() {
         let d = Die::new(2, 10);
-        let mut sum: i32 = 0;
+        let mut sum: i64 = 0;
         for _ in 1..100 {
             sum += d.roll().num();
         }

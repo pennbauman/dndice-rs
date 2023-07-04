@@ -218,8 +218,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_roll_log_log_panic2() {
-        let mut rl = RollLog::new(100);
-        rl.log(-2);
+        let mut rl = RollLog::new(10);
+        rl.log(100);
     }
     #[test]
     fn test_roll_log_fmt() {

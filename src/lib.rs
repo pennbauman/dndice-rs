@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn test_dice_roll() {
         let mut d = Dice::from("3d4 - 1").unwrap();
-        let mut sum: i32 = 0;
+        let mut sum: i64 = 0;
         for _ in 1..100 {
             sum += d.roll();
         }
